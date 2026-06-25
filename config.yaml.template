@@ -1,0 +1,17 @@
+# ComfyUI Dependency Manager Configuration
+# Auto-generated or created by comfyui-deps config init
+
+paths:
+  comfyui_root: ""
+  custom_nodes: ""
+  python_exe: ""
+  python_home: ""
+  git_exe: ""
+  backup_dir: ""
+  log_dir: ""
+
+core_libs:
+  - torch
+  - xformers
+  - onnxruntime
+  - onnxruntime-gpu

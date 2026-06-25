@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-deps"
+version = "0.1.0"
+description = "ComfyUI Plugin Dependency Manager - automate ComfyUI updates, backups, and dependency management"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "PyYAML>=6.0",
+    "colorama>=0.4",
+    "Flask>=3.0",
+]
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "ComfyUI User"},
+]
+keywords = ["comfyui", "plugin", "dependency", "manager"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Environment :: Console",
+]
+
+[project.scripts]
+comfyui-deps = "comfyui_deps.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+comfyui_deps = ["templates/*", "static/*"]

@@ -1,0 +1,2 @@
+[console_scripts]
+comfyui-deps = comfyui_deps.cli:main

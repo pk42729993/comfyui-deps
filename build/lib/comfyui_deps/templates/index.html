@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComfyUI 插件依赖管理器</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>ComfyUI 插件依赖管理器</h1>
+  <span class="subtitle">Plugin Dependency Manager</span>
+</header>
+
+<nav id="tabs">
+  <button class="tab active" data-tab="scan">扫描</button>
+  <button class="tab" data-tab="detail">详情</button>
+  <button class="tab" data-tab="config">配置</button>
+</nav>
+
+<div id="toast"></div>
+
+<main>
+  <!-- 扫描标签页 -->
+  <section id="tab-scan" class="tab-content active">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button id="btn-scan-page" class="btn btn-primary">扫描本页</button>
+        <button id="btn-scan-all" class="btn">扫描全部</button>
+        <button id="btn-scan-stop" class="btn btn-danger" disabled>停止扫描</button>
+        <label class="page-size-label">每页:
+          <select id="page-size-select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar-right">
+        <input id="scan-search" class="input-text search-input" placeholder="搜索插件...">
+        <span id="scan-stats"></span>
+      </div>
+    </div>
+    <div id="plugin-list" class="plugin-table">
+      <div class="table-header">
+        <span class="col-status">状态</span>
+        <span class="col-type">类型</span>
+        <span class="col-name">名称</span>
+        <span class="col-branch">分支</span>
+        <span class="col-backups">备份数</span>
+        <span class="col-actions">操作</span>
+      </div>
+      <div id="plugin-rows"></div>
+    </div>
+    <div id="pagination" class="pagination"></div>
+    <div id="scan-summary" class="summary hidden"></div>
+  </section>
+
+  <!-- 详情标签页 (合并的单页) -->
+  <section id="tab-detail" class="tab-content">
+    <div class="detail-header">
+      <div class="detail-plugin-picker">
+        <label>当前插件:</label>
+        <div class="plugin-picker-wrap">
+          <input id="detail-plugin-input" class="input-text" placeholder="输入插件名搜索..." autocomplete="off">
+          <div id="detail-plugin-dropdown" class="plugin-dropdown hidden"></div>
+        </div>
+      </div>
+      <div class="detail-nav-btns">
+        <button id="btn-detail-goto-dir" class="btn btn-sm" title="打开插件目录">打开目录</button>
+        <button id="btn-detail-refresh" class="btn btn-sm">刷新</button>
+      </div>
+    </div>
+
+    <!-- 检查更新区 -->
+    <div class="detail-section">
+      <div class="section-title">检查更新</div>
+      <div class="detail-actions">
+        <button id="btn-detail-check" class="btn btn-primary">检查更新</button>
+        <span id="detail-check-hint" class="cache-hint hidden">(使用缓存结果)</span>
+      </div>
+      <div id="detail-check-result" class="result-box hidden"></div>
+    </div>
+
+    <!-- 更新区 -->
+    <div class="detail-section">
+      <div class="section-title">更新</div>
+      <div class="checkbox-group" style="margin-bottom:10px;">
+        <label><input type="checkbox" id="detail-update-skip-backup"> 跳过备份</label>
+        <label><input type="checkbox" id="detail-update-skip-deps"> 跳过安装依赖</label>
+      </div>
+      <div class="input-row" style="margin-bottom:10px;">
+        <label style="font-size:0.85rem;color:var(--text-muted);">目标分支:</label>
+        <select id="detail-update-branch" class="plugin-select" style="min-width:140px;">
+          <option value="">(默认检测)</option>
+        </select>
+      </div>
+      <button id="btn-detail-update" class="btn btn-primary">开始更新</button>
+      <div id="detail-update-result" class="result-box hidden"></div>
+    </div>
+
+    <!-- 备份区 -->
+    <div class="detail-section">
+      <div class="section-title">
+        备份
+        <span id="detail-backup-count" style="font-weight:400;color:var(--text-muted);font-size:0.82rem;margin-left:8px;"></span>
+      </div>
+      <div class="detail-actions">
+        <button id="btn-detail-backup-dir" class="btn btn-primary">备份目录</button>
+      </div>
+      <div id="detail-backup-result" class="result-box hidden"></div>
+      <div id="detail-backup-list" class="backup-list"></div>
+    </div>
+
+    <!-- 依赖区 -->
+    <div class="detail-section">
+      <div class="section-title">依赖管理</div>
+
+      <div class="dep-block">
+        <h4>读取插件依赖</h4>
+        <div class="input-row">
+          <button id="btn-detail-deps-read" class="btn">查看当前插件依赖</button>
+          <button id="btn-detail-deps-read-install" class="btn btn-primary">安装当前插件依赖</button>
+        </div>
+      </div>
+
+      <div class="dep-block">
+        <h4>手动安装包</h4>
+        <div class="input-row">
+          <input id="detail-deps-package" class="input-text" placeholder="包名 (例如 numpy==1.24)">
+          <button id="btn-detail-deps-check" class="btn">模拟运行</button>
+          <button id="btn-detail-deps-install" class="btn btn-primary">安装</button>
+        </div>
+      </div>
+
+      <div class="dep-block">
+        <h4>备份依赖</h4>
+        <div class="input-row">
+          <button id="btn-detail-deps-freeze" class="btn btn-primary">开始备份依赖</button>
+        </div>
+      </div>
+
+      <div class="dep-block">
+        <h4>备份文件列表</h4>
+        <div id="detail-freeze-list" class="freeze-list"></div>
+      </div>
+
+      <div id="detail-deps-result" class="result-box hidden"></div>
+    </div>
+  </section>
+
+  <!-- 配置标签页 -->
+  <section id="tab-config" class="tab-content">
+    <div class="config-hint">
+      <span id="config-status"></span>
+    </div>
+    <div class="config-profile-bar">
+      <label>当前配置:</label>
+      <select id="cfg-profile-select" class="plugin-select"></select>
+      <button id="btn-config-new" class="btn btn-sm">新建</button>
+      <button id="btn-config-delete" class="btn btn-sm btn-danger">删除</button>
+    </div>
+    <div class="required-hint"><span class="required-star">*</span>代表本配置为必填</div>
+    <div class="config-form">
+      <div class="form-group">
+        <label><span class="required-star">*</span>ComfyUI 根目录</label>
+        <div class="dir-row">
+          <input id="cfg-comfyui_root" class="input-text full-width" placeholder="例如: G:\Comfyui\ComfyUI">
+          <button class="btn btn-sm btn-dir-open" data-target="cfg-comfyui_root">打开</button>
+          <span class="dir-size" data-target="cfg-comfyui_root"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><span class="required-star">*</span>自定义节点目录</label>
+        <div class="dir-row">
+          <input id="cfg-custom_nodes" class="input-text full-width" placeholder="例如: G:\Comfyui\ComfyUI\custom_nodes">
+          <button class="btn btn-sm btn-dir-open" data-target="cfg-custom_nodes">打开</button>
+          <span class="dir-size" data-target="cfg-custom_nodes"></span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label><span class="required-star">*</span>Python 安装目录</label>
+          <div class="dir-row">
+            <input id="cfg-python_home" class="input-text full-width" placeholder="例如: G:\Comfyui\python_dapao312">
+            <button class="btn btn-sm btn-dir-open" data-target="cfg-python_home">打开</button>
+            <span class="dir-size" data-target="cfg-python_home"></span>
+          </div>
+        </div>
+        <div class="form-group flex-1">
+          <label>Git 可执行文件(本配置可自行检测)</label>
+          <input id="cfg-git_exe" class="input-text full-width" placeholder="git (自动检测)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label><span class="required-star">*</span>备份存储目录</label>
+          <div class="dir-row">
+            <input id="cfg-backup_dir" class="input-text full-width" placeholder="例如: G:\Comfyui\backups">
+            <button class="btn btn-sm btn-dir-open" data-target="cfg-backup_dir">打开</button>
+            <span class="dir-size" data-target="cfg-backup_dir"></span>
+          </div>
+        </div>
+        <div class="form-group flex-1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>日志目录</label>
+          <div class="dir-row">
+            <input id="cfg-log_dir" class="input-text full-width" placeholder="例如: .\log">
+            <button class="btn btn-sm btn-dir-open" data-target="cfg-log_dir">打开</button>
+            <span class="dir-size" data-target="cfg-log_dir"></span>
+          </div>
+        </div>
+        <div class="form-group flex-1">
+          <label>缓存目录</label>
+          <div class="dir-row">
+            <input id="cfg-cache_dir" class="input-text full-width" placeholder="例如: .\cache">
+            <button class="btn btn-sm btn-dir-open" data-target="cfg-cache_dir">打开</button>
+            <span class="dir-size" data-target="cfg-cache_dir"></span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>核心库 (用逗号分隔)</label>
+        <input id="cfg-core_libs" class="input-text full-width" placeholder="torch, xformers, onnxruntime">
+      </div>
+      <div class="form-actions">
+        <button id="btn-config-save" class="btn btn-primary">保存配置</button>
+        <span id="config-save-status"></span>
+      </div>
+      <div id="config-errors" class="config-errors hidden"></div>
+    </div>
+  </section>
+</main>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title"></h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

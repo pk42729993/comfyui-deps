@@ -1,2 +1,262 @@
 # comfyui-deps
-comfyui插件依赖管理器
+
+ComfyUI 插件依赖管理工具。自动化管理 ComfyUI 主程序及自定义插件的更新、依赖安装、备份与回滚流程。
+
+## 环境要求
+
+- Windows 操作系统
+- Python >= 3.10
+- Git for Windows
+
+## 安装
+
+将项目目录复制到任意位置，在 CMD 中执行：
+
+```bash
+python.exe -m pip install <项目目录>
+```
+
+如果 python.exe 不在系统 PATH 中，使用 ComfyUI 便携包 Python 的完整路径：
+
+```bash
+G:\Comfyui\COMFYUI_Laoxu\python_dapao312\python.exe -m pip install <项目目录>
+```
+
+## 快速开始
+
+安装完成后直接运行，自动打开 Web 图形界面：
+
+```bash
+comfyui-deps
+```
+
+首次启动时自动跳转到 **Config** 标签页，在 Web 界面中填写以下路径后点击 **Save Configuration**：
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| ComfyUI Root | ComfyUI 主程序目录 | `G:\Comfyui\ComfyUI` |
+| Custom Nodes | 插件目录 | `G:\Comfyui\ComfyUI\custom_nodes` |
+| Python Executable | python.exe 完整路径 | `G:\Comfyui\python_dapao312\python.exe` |
+| Python Installation Dir | Python 安装目录（自动侦测 python.exe） | `G:\Comfyui\python_dapao312` |
+| Git Executable | git.exe 路径（留空自动侦测） | `C:\Program Files\Git\bin\git.exe` |
+| Backup Directory | 备份存放目录 | `G:\Comfyui\backups` |
+| Log Directory | 日志目录 | `G:\Comfyui\ComfyUI` |
+
+保存后点击其他标签页即可使用全部功能。若需使用命令行，子命令用法如下：
+
+```bash
+comfyui-deps scan
+```
+
+输出示例：
+
+```
+Scanning: G:\Comfyui\COMFYUI_Laoxu\ComfyUI\custom_nodes
+
+  git ComfyUI-Manager [3 commits]
+  git ComfyUI-SeedVR2 [up to date]
+  zip was-node-suite [non-git]
+
+Total: 3 plugins (2 git, 1 have updates)
+```
+
+每行含义：
+- `git` = 该插件是 git 仓库，可增量更新
+- `zip` = 无 .git 目录，需手动下载 ZIP 更新
+- `[N commits]` = 落后远程 N 个提交
+- `[up to date]` = 已是最新
+
+### 查看更新内容
+
+```bash
+comfyui-deps check -t ComfyUI-Manager
+```
+
+查看详细提交信息：
+
+```bash
+comfyui-deps check -t ComfyUI-Manager -v
+```
+
+加 `-v` 会显示每次提交的作者、时间和完整说明。
+
+### 执行安全更新
+
+```bash
+comfyui-deps update -t ComfyUI-Manager
+```
+
+自动执行以下步骤：
+1. 检查待更新内容并展示
+2. 创建目录备份（复制整个插件目录）
+3. 创建 pip 依赖快照（pip freeze）
+4. 执行 git pull 拉取最新代码
+5. dry-run 预检依赖安装，检测核心库冲突
+6. 安装 Python 依赖
+
+跳过备份或依赖步骤：
+
+```bash
+comfyui-deps update -t ComfyUI-Manager --skip-backup --skip-deps
+```
+
+跳过所有确认提示：
+
+```bash
+comfyui-deps update -t ComfyUI-Manager -y
+```
+
+### 验证
+
+重启 ComfyUI，确认：
+- 启动日志无插件加载报错
+- 插件功能正常
+
+---
+
+## 命令参考
+
+### 配置管理
+
+| 命令 | 说明 |
+|------|------|
+| `comfyui-deps config init` | 交互式初始化配置 |
+| `comfyui-deps config show` | 显示当前配置及路径校验结果 |
+| `comfyui-deps config set <键> <值>` | 修改单个配置项 |
+
+支持的配置键：`comfyui_root`、`custom_nodes`、`python_exe`、`python_home`、`git_exe`、`backup_dir`、`log_dir`
+
+### 查看更新
+
+| 命令 | 说明 |
+|------|------|
+| `comfyui-deps scan` | 批量扫描所有插件（默认分页，10 个/页，Enter/n/p/q 翻页） |
+| `comfyui-deps scan --all` | 一次性扫描全部插件（无分页） |
+| `comfyui-deps scan --page-size 20` | 自定义每页数量 |
+| `comfyui-deps check -t <名称>` | 查看单个插件更新内容 |
+| `comfyui-deps check -t <名称> -v` | 查看详细提交信息 |
+
+`-t` 可传插件目录名（如 `ComfyUI-Manager`），也可传绝对路径。不传 `-t` 时默认检查 ComfyUI 主程序。
+
+### 执行更新
+
+```bash
+comfyui-deps update -t <名称> [选项]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `-y, --yes` | 跳过所有确认提示 |
+| `--skip-backup` | 跳过目录备份和 pip 快照 |
+| `--skip-deps` | 跳过依赖安装 |
+| `--config, -c <路径>` | 指定配置文件路径 |
+
+### 备份管理
+
+| 命令 | 说明 |
+|------|------|
+| `comfyui-deps backup dir -t <名称>` | 创建目录备份 |
+| `comfyui-deps backup deps` | 创建 pip 依赖快照 |
+| `comfyui-deps backup list -t <名称>` | 列出可用备份 |
+| `comfyui-deps backup clean -t <名称> -k 5` | 保留最近 N 个备份，删除更早的 |
+
+### 依赖管理
+
+| 命令 | 说明 |
+|------|------|
+| `comfyui-deps deps check -t <名称>` | dry-run 预检，查看将安装哪些依赖 |
+| `comfyui-deps deps install -t <名称>` | 安装 requirements.txt 中的依赖 |
+| `comfyui-deps deps add <包名>` | 安装单个 Python 包 |
+
+新安装的插件没有自动装依赖，需手动执行：
+
+```bash
+cd custom_nodes && git clone <插件仓库URL>
+comfyui-deps deps install -t <插件名>
+```
+
+### 回滚
+
+| 命令 | 说明 |
+|------|------|
+| `comfyui-deps rollback -t <名称> -l` | 列出可用备份 |
+| `comfyui-deps rollback -t <名称> -r <备份名>` | 恢复目录备份 |
+| `comfyui-deps rollback -t <名称> -r <快照文件> -f` | 强制回退依赖到快照版本 |
+
+---
+
+## 备份与恢复机制
+
+### 目录备份
+
+`update` 命令在执行 git pull 前自动创建目录备份，命名格式：
+
+```
+<插件名>_backup_YYYYMMDD
+```
+
+存放于 `backup_dir` 配置的目录中。
+
+回滚时工具会先将被替换的当前目录重命名为 `<插件名>_failed_YYYYMMDD_HHMMSS`，再把备份目录恢复为原始名称。即使回滚操作本身也能撤销。
+
+### 依赖快照
+
+`update` 命令在安装依赖前执行 `pip freeze` 生成快照文件：
+
+```
+requirements-backupYYYYMMDD.txt
+```
+
+回退支持两种策略：
+
+- **温和回退（默认）**：`--upgrade-strategy only-if-needed`，仅调整不一致的包
+- **强制回退**：`-f` 参数，`--force-reinstall` 重装所有包
+
+### 核心库保护
+
+所有依赖操作前执行 dry-run 预检。检测到以下核心库将被升级时暂停并警告：
+
+- torch
+- xformers
+- onnxruntime
+
+用户确认后才会继续安装。
+
+---
+
+## 非 Git 插件更新
+
+对于通过 ZIP 下载、没有 `.git` 目录的插件，`update` 命令会提示手动操作步骤：
+
+1. 前往插件官方仓库下载最新 ZIP
+2. 备份插件目录下的配置文件
+3. 解压 ZIP 替换源码
+4. 执行 `comfyui-deps deps install -t <插件名>` 补装依赖
+
+---
+
+## 常见问题
+
+**Q: 报错 `[XX] Directory not found`**
+
+A: 需要先执行 `comfyui-deps config init` 配置路径。也可以传绝对路径绕过：
+
+```bash
+comfyui-deps check -t "G:\Comfyui\COMFYUI_Laoxu\ComfyUI\custom_nodes\ComfyUI-Manager"
+```
+
+**Q: 报错 `unknown revision or path`**
+
+A: 远程分支名检测有误。先进入插件目录执行 `git branch -r` 确认实际分支名，再在 `update` 前手动执行 `git fetch origin`。
+
+**Q: Git 使用的是系统自带的旧版本**
+
+A: 使用 `comfyui-deps config set git_exe` 指定 PortableGit 路径，工具会优先使用配置的 git.exe。
+
+**Q: 多个 ComfyUI 环境如何切换**
+
+A: 使用 `-c` 参数指定不同配置文件：
+
+```bash
+comfyui-deps -c D:\configs\comfyui-prod.yaml scan
+```

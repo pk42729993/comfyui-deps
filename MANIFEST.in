@@ -1,0 +1,4 @@
+graft src/comfyui_deps/templates
+graft src/comfyui_deps/static
+include README.md
+include LICENSE
